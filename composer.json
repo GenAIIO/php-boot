@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "description": "Application kernel with Composer-based package auto-discovery (Laravel style): reads each installed component's extra.genai.processors so the app never hand-lists them, then boots the compiled app into a ready Dispatcher. Build-time uses PHP 8; the Kernel + runtime boot are PHP 5.3-safe.",
     "type": "library",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "repositories": [
         { "type": "path", "url": "../php-routing" },
         { "type": "path", "url": "../php-container" },
