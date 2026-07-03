@@ -1,0 +1,84 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * genai/boot compile CLI — the build step (PHP 8), packaged so an app needs no
+ * per-project compile.php. Run from the project root after `composer install`:
+ *
+ *   vendor/bin/genai-compile --namespace=App
+ *   vendor/bin/genai-compile --namespace=App --namespace=Api   (repeatable)
+ *   vendor/bin/genai-compile --namespace=App,Api               (or comma-separated)
+ *
+ * At least one --namespace is required. Processors and bundles are discovered from
+ * installed packages automatically (extra.genai.*), so this is the entire build
+ * wiring an app needs.
+ */
+
+// 1. Find the app's Composer autoloader. Order matters: the project root (cwd) is
+//    tried first because that's where Composer runs scripts and where the bin is
+//    invoked — and with path repositories Composer SYMLINKS vendor/genai/boot, so
+//    __DIR__ resolves to the real package dir, not under the app's vendor/. The
+//    Composer-injected path and __DIR__ walks are fallbacks for normal installs.
+$candidates = array(
+    getcwd() . '/vendor/autoload.php',    // project root (composer scripts / manual run from root)
+    isset($GLOBALS['_composer_autoload_path']) ? $GLOBALS['_composer_autoload_path'] : null, // composer bin proxy
+    __DIR__ . '/../../../autoload.php',   // dependency, non-symlinked: -> <root>/vendor/autoload.php
+    __DIR__ . '/../vendor/autoload.php',  // standalone package checkout
+);
+$autoload = null;
+foreach ($candidates as $candidate) {
+    if ($candidate !== null && file_exists($candidate)) {
+        $autoload = realpath($candidate);
+        break;
+    }
+}
+if ($autoload === null) {
+    fwrite(STDERR, "genai-compile: could not find vendor/autoload.php — run `composer install` first.\n");
+    exit(1);
+}
+
+$loader = require $autoload;
+$root   = dirname(dirname($autoload));   // <root>/vendor/autoload.php -> <root>
+
+// 2. Parse --namespace=Foo (repeatable, comma-separated). --help prints usage.
+$usage =
+      "Usage: genai-compile --namespace=App [--namespace=Api ...]\n\n"
+    . "Pass the namespace(s) holding your annotated classes (#[Route], #[Component], ...):\n"
+    . "  --namespace=App                       a single root namespace\n"
+    . "  --namespace=App --namespace=Api       repeat the flag for more\n"
+    . "  --namespace=App,Api                   or comma-separate them\n\n"
+    . "Typically wired as a Composer script so `composer compile` runs it:\n"
+    . "  \"scripts\": { \"compile\": \"genai-compile --namespace=App\" }\n";
+
+$namespaces = array();
+foreach (array_slice($argv, 1) as $arg) {
+    if ($arg === '--help' || $arg === '-h') {
+        fwrite(STDOUT, $usage);
+        exit(0);
+    }
+    if (strpos($arg, '--namespace=') === 0) {
+        foreach (explode(',', substr($arg, strlen('--namespace='))) as $namespace) {
+            $namespace = trim($namespace);
+            if ($namespace !== '') {
+                $namespaces[] = $namespace;
+            }
+        }
+        continue;
+    }
+    fwrite(STDERR, "genai-compile: unknown argument \"$arg\".\n\n" . $usage);
+    exit(1);
+}
+if (empty($namespaces)) {
+    fwrite(STDERR, "genai-compile: no namespace given — at least one --namespace is required.\n\n" . $usage);
+    exit(1);
+}
+
+// 3. Compile (delegates to GenAI\Boot\Compiler, PHP 8 with reflection).
+$kernel   = new GenAI\Boot\Kernel();
+$compiler = $kernel->compile($root, $namespaces, $loader);
+
+fwrite(STDOUT, "Compiled " . implode(', ', $namespaces) . " to " . $root . "/cache/\n");
+foreach ($compiler->discoverProcessors() as $processor) {
+    fwrite(STDOUT, "  processor: " . $processor . "\n");
+}
+exit(0);

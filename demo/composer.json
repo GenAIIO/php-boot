@@ -1,0 +1,27 @@
+{
+    "name": "genai/boot-demo",
+    "type": "project",
+    "repositories": [
+        { "type": "path", "url": ".." },
+        { "type": "path", "url": "../../php-web" },
+        { "type": "path", "url": "../../php-routing" },
+        { "type": "path", "url": "../../php-container" },
+        { "type": "path", "url": "../../php-http" },
+        { "type": "path", "url": "../../php-view" },
+        { "type": "path", "url": "../../php-di" },
+        { "type": "path", "url": "../../php-property" },
+        { "type": "path", "url": "../../php-attribute" }
+    ],
+    "require": {
+        "genai/boot": "*",
+        "genai/web": "*",
+        "genai/di": "*",
+        "genai/attribute": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Demo\\": "fixtures",
+            "Cache\\": "cache/"
+        }
+    }
+}

@@ -1,0 +1,42 @@
+{
+    "name": "genai/boot",
+    "version": "1.0.0",
+    "description": "Application kernel with Composer-based package auto-discovery (Laravel style): reads each installed component's extra.genai.processors so the app never hand-lists them, then boots the compiled app into a ready Dispatcher. Build-time uses PHP 8; the Kernel + runtime boot are PHP 5.3-safe.",
+    "type": "library",
+    "license": "MIT",
+    "repositories": [
+        { "type": "path", "url": "../php-routing" },
+        { "type": "path", "url": "../php-container" },
+        { "type": "path", "url": "../php-http" },
+        { "type": "path", "url": "../php-view" },
+        { "type": "path", "url": "../php-attribute" },
+        { "type": "path", "url": "../php-web" },
+        { "type": "path", "url": "../php-property" },
+        { "type": "path", "url": "../php-console" },
+        { "type": "path", "url": "../php-messaging" },
+        { "type": "path", "url": "../php-dto" }
+    ],
+    "require": {
+        "php": ">=5.3.0",
+        "genai/container": "*",
+        "genai/property": "*"
+    },
+    "suggest": {
+        "genai/attribute": "Build-time scanning/compilation used by Kernel::compile() (PHP 8 only).",
+        "genai/web": "HTTP front: Kernel::run() dispatches web requests to GenAI\\Web\\WebAutoConfig.",
+        "genai/console": "CLI front: Kernel::run() dispatches commands to GenAI\\Console\\ConsoleAutoConfig.",
+        "genai/messaging": "Messaging front: Kernel::run() dispatches `consume` to GenAI\\Messaging\\MessagingAutoConfig.",
+        "genai/dto": "JSON serialization of #[Dto] results returned from #[RestController]s."
+    },
+    "extra": {
+        "genai": {
+            "scan": ["GenAI\\Boot"]
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "GenAI\\Boot\\": "src/"
+        }
+    },
+    "bin": ["bin/genai-compile"]
+}
