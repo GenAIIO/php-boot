@@ -1,0 +1,54 @@
+name: Auto Release
+
+# Every push to the default branch cuts a new patch release:
+# reads the latest vX.Y.Z tag, bumps the patch, and creates a tag + GitHub Release.
+# Packagist picks up the new version automatically via the org's Packagist GitHub App.
+
+on:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need all tags to compute the next version
+
+      - name: Compute next version
+        id: ver
+        run: |
+          latest=$(git tag -l 'v*.*.*' --sort=-v:refname | head -n1)
+          if [ -z "$latest" ]; then
+            next="v1.0.0"
+          else
+            ver=${latest#v}
+            major=$(echo "$ver" | cut -d. -f1)
+            minor=$(echo "$ver" | cut -d. -f2)
+            patch=$(echo "$ver" | cut -d. -f3)
+            next="v${major}.${minor}.$((patch + 1))"
+          fi
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "Latest tag: ${latest:-none} -> next: $next"
+
+      - name: Create tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          next="${{ steps.ver.outputs.next }}"
+          if git rev-parse "$next" >/dev/null 2>&1; then
+            echo "Tag $next already exists, nothing to do."
+            exit 0
+          fi
+          gh release create "$next" \
+            --title "$next" \
+            --generate-notes \
+            --target "${{ github.sha }}"
