@@ -2,7 +2,8 @@ name: Auto Release
 
 # Every push to the default branch cuts a new patch release:
 # reads the latest vX.Y.Z tag, bumps the patch, and creates a tag + GitHub Release.
-# Packagist picks up the new version automatically via the org's Packagist GitHub App.
+# Then it notifies Packagist so the new version is indexed (needs the PACKAGIST_TOKEN
+# secret; the step is skipped gracefully if the secret isn't set).
 
 on:
   push:
@@ -18,6 +19,9 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+      PACKAGIST_USER: jinnguyen
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,3 +56,13 @@ jobs:
             --title "$next" \
             --generate-notes \
             --target "${{ github.sha }}"
+
+      - name: Notify Packagist
+        if: ${{ env.PACKAGIST_TOKEN != '' }}
+        run: |
+          curl -sf -X POST \
+            "https://packagist.org/api/update-package?username=${PACKAGIST_USER}&apiToken=${PACKAGIST_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"repository\":{\"url\":\"https://github.com/${{ github.repository }}\"}}" \
+            && echo "Packagist notified for ${{ github.repository }}" \
+            || echo "Packagist notify failed (check PACKAGIST_TOKEN)"
